@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.Properties;
+import java.util.UUID;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -25,6 +26,7 @@ public final class ForgeMindMemory {
 
     private static final String FILE_NAME = "forgemind.properties";
     private static final String PROFILE_PREFIX = "profile.";
+    private static final String PROFILE_ID_KEY = "profile.id";
 
     private static final ForgeMindMemory INSTANCE =
             new ForgeMindMemory();
@@ -39,6 +41,29 @@ public final class ForgeMindMemory {
 
     public static ForgeMindMemory getInstance() {
         return INSTANCE;
+    }
+
+    /**
+     * Returns the persistent local learning profile ID.
+     * Creates and saves one on the first call.
+     */
+    public synchronized String getOrCreateProfileId() {
+        final String stored = values.getProperty(PROFILE_ID_KEY);
+
+        if (stored != null) {
+            try {
+                UUID.fromString(stored);
+                return stored;
+            } catch (final IllegalArgumentException ex) {
+                LOGGER.log(Level.WARNING,
+                        "Invalid ForgeMind profile ID; creating a new one", ex);
+            }
+        }
+
+        final String profileId = UUID.randomUUID().toString();
+        values.setProperty(PROFILE_ID_KEY, profileId);
+        save();
+        return profileId;
     }
 
     public synchronized long getObservationCount(
@@ -132,4 +157,4 @@ public final class ForgeMindMemory {
         return Base64.getUrlEncoder().withoutPadding()
                 .encodeToString(value.getBytes(StandardCharsets.UTF_8));
     }
-  }
+}
