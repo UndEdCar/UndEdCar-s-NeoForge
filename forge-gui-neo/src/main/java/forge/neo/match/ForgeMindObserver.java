@@ -58,13 +58,18 @@ final class ForgeMindObserver {
             return;
         }
 
-        final String profileId =
-                ForgeMindMemory.getInstance().getOrCreateProfileId();
+        final ForgeMindMemory memory =
+                ForgeMindMemory.getInstance();
+        final String profileId = memory.getOrCreateProfileId();
 
         game.subscribeToEvents(new ForgeMindObserver(
                 PlayerView.get(humanPlayer), profileId));
 
-        System.out.println("[forgemind] Gameplay observer attached");
+        System.out.println(
+                "[forgemind] Observer attached. Profile: "
+                + profileId.substring(0, 8));
+
+        logCounts(memory, profileId, "Loaded");
     }
 
     @Subscribe
@@ -100,7 +105,14 @@ final class ForgeMindObserver {
     @Subscribe
     public void onGameOutcome(
             final GameEventGameOutcome event) {
-        memory.save();
+
+        final boolean saved = memory.save();
+
+        System.out.println(
+                "[forgemind] Game ended. Memory save: "
+                + (saved ? "SUCCESS" : "FAILED"));
+
+        logCounts(memory, profileId, "Saved");
     }
 
     private boolean isHuman(final PlayerView player) {
@@ -109,5 +121,28 @@ final class ForgeMindObserver {
 
     private void record(final String observationId) {
         memory.recordObservation(profileId, observationId);
+
+        System.out.println(
+                "[forgemind] Recorded " + observationId
+                + " (count: "
+                + memory.getObservationCount(profileId, observationId)
+                + ")");
+    }
+
+    private static void logCounts(
+            final ForgeMindMemory memory,
+            final String profileId,
+            final String label) {
+
+        System.out.println(
+                "[forgemind] " + label + " observations: "
+                + "spells=" + memory.getObservationCount(
+                        profileId, SPELL_CAST)
+                + ", abilities=" + memory.getObservationCount(
+                        profileId, ABILITY_ACTIVATED)
+                + ", attacks=" + memory.getObservationCount(
+                        profileId, ATTACKERS_DECLARED)
+                + ", blocks=" + memory.getObservationCount(
+                        profileId, BLOCKERS_DECLARED));
     }
 }
