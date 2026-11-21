@@ -476,7 +476,15 @@ public final class NeoGame {
                 : devOppRelics > 0 ? () -> riggedOppRelics(match.getGame())
                 : devMyRelics != null ? () -> riggedMyRelics(match.getGame())
                 : devRig != null ? () -> riggedCards(match.getGame()) : null;
-        match.setStartGameHook(SafeAi.hook(match, rig));
+        final RegisteredPlayer forgeMindHumanSeat = humanSeat;
+
+match.setStartGameHook(SafeAi.hook(match, () -> {
+    ForgeMindObserver.attach(match.getGame(), forgeMindHumanSeat);
+
+    if (rig != null) {
+        rig.run();
+    }
+}));
 
         // Normalmente una sola partida (gamesPerMatch=1): para validar nos
         // sobra y tarda un tercio, y en Commander no hay banquillo con el que
