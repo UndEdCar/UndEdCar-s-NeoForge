@@ -92,6 +92,47 @@ tail -15 "$OUT/partida.log"
 if [ ! -s "$OUT/partida.png" ]; then
     echo "::warning::no ha salido la captura de la partida"
 fi
+echo "== 3b. ForgeMind persistence test"
+
+if ! grep -Fq "[forgemind] Game ended. Memory save: SUCCESS" "$OUT/partida.log"; then
+    echo "::error::First match did not confirm a successful memory save"
+    fallos=$((fallos + 1))
+else
+    FIRST_PROFILE="$(sed -n 's/.*Observer attached. Profile: //p' "$OUT/partida.log" | head -1)"
+    FIRST_SAVED="$(sed -n 's/.*Saved observations: //p' "$OUT/partida.log" | tail -1)"
+
+    if [ -z "$FIRST_PROFILE" ] || [ -z "$FIRST_SAVED" ]; then
+        echo "::error::Could not read first match profile or saved counts"
+        fallos=$((fallos + 1))
+    else
+        echo "First profile: $FIRST_PROFILE"
+        echo "First saved counts: $FIRST_SAVED"
+
+        timeout 900 "${PANTALLA[@]}" "$BIN" ui --live --auto --snapshot="$OUT/partida-segunda.png" --wait=90 > "$OUT/partida-segunda.log" 2>&1
+
+        SECOND_PROFILE="$(sed -n 's/.*Observer attached. Profile: //p' "$OUT/partida-segunda.log" | head -1)"
+        SECOND_LOADED="$(sed -n 's/.*Loaded observations: //p' "$OUT/partida-segunda.log" | head -1)"
+
+        if [ -z "$SECOND_PROFILE" ]; then
+            echo "::error::Observer did not attach in second match"
+            fallos=$((fallos + 1))
+        elif [ "$SECOND_PROFILE" != "$FIRST_PROFILE" ]; then
+            echo "::error::Profile changed between application launches"
+            fallos=$((fallos + 1))
+        elif [ "$SECOND_LOADED" != "$FIRST_SAVED" ]; then
+            echo "::error::Second match did not load the first match's saved counts"
+            fallos=$((fallos + 1))
+        elif ! grep -Fq "[forgemind] Game ended. Memory save: SUCCESS" "$OUT/partida-segunda.log"; then
+            echo "::error::Second match did not confirm a successful memory save"
+            fallos=$((fallos + 1))
+        else
+            echo "ForgeMind: persistence between application launches verified"
+        fi
+
+        tail -20 "$OUT/partida-segunda.log"
+    fi
+fi
+
 
 echo "== 4. La Aventura, abierta desde el menu (como la abre el jugador)"
 # Discord, 09-10-2026 (1.0.18): la Aventura se cerraba al abrirla con "Could not
