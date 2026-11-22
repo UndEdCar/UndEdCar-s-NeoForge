@@ -908,25 +908,33 @@ public final class DeckRulesCheck {
      * nadie se entere.
      */
     private static void searchIsFastEnough() {
-        final DeckEditor editor = DeckEditor.createNew(NeoFormat.COMMANDER, "prueba");
-        editor.setCommander(card("Krenko, Mob Boss"));
+    final DeckEditor editor = DeckEditor.createNew(NeoFormat.COMMANDER, "prueba");
+    editor.setCommander(card("Krenko, Mob Boss"));
 
-        final String[] queries = {"s", "so", "sol", "sol ", "sol r", "goblin", "lightning"};
-        long worst = 0;
+    final String[] queries = {"s", "so", "sol", "sol ", "sol r", "goblin", "lightning"};
+
+    // La primera pasada calienta el JIT: no cuenta como medicion.
+    for (final String q : queries) {
+        editor.search(q, true, null, 60);
+    }
+
+    long worst = 0;
+    for (int round = 0; round < 3; round++) {
         for (final String q : queries) {
             final long t0 = System.nanoTime();
             editor.search(q, true, null, 60);
             final long ms = (System.nanoTime() - t0) / 1_000_000;
             worst = Math.max(worst, ms);
-            System.out.printf("       busqueda \"%s\": %d ms%n", q, ms);
+            System.out.printf("       busqueda \"%s\" (ronda %d): %d ms%n", q, round + 1, ms);
         }
-        check("El buscador responde en menos de 150 ms por tecla", worst < 150);
+    }
+    check("El buscador responde en menos de 150 ms por tecla", worst < 150);
 
-        final long t0 = System.nanoTime();
-        final int printings = editor.printingsOf(card("Sol Ring")).size();
-        final long ms = (System.nanoTime() - t0) / 1_000_000;
-        System.out.printf("       %d ediciones de Sol Ring en %d ms%n", printings, ms);
-        check("Las ediciones de UNA carta se traen al instante", ms < 50 && printings > 1);
+    final long t0 = System.nanoTime();
+    final int printings = editor.printingsOf(card("Sol Ring")).size();
+    final long ms = (System.nanoTime() - t0) / 1_000_000;
+    System.out.printf("       %d ediciones de Sol Ring en %d ms%n", printings, ms);
+    check("Las ediciones de UNA carta se traen al instante", ms < 50 && printings > 1);
     }
 
     /**
